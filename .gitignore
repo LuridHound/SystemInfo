@@ -1,0 +1,5 @@
+# Information of the IDE
+.idea/
+
+# Build
+cmake-build-debug/
