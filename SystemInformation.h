@@ -61,10 +61,10 @@ struct SystemInformation
     struct RAM
             {
         // In MB.
-        size_t total;
-        size_t free;
+        size_t total_;
+        size_t free_;
         // How much memory is in use. Value in range  [0;100]
-        uint32_t inUse;
+        uint32_t inUse_;
 
             } ram;
 
@@ -72,10 +72,10 @@ struct SystemInformation
     struct HDD
             {
         // In MB.
-        size_t total;
-        size_t free;
+        size_t total_;
+        size_t free_;
         // How much memory is in use. Value in range  [0;100]
-        uint32_t inUse;
+        uint32_t inUse_;
             } hdd;
 
 };
@@ -107,11 +107,11 @@ void call_cpuid(unsigned int value, int* registers);
             return false;
         }
 
-        systemInformation->ram.total = systemInfo.totalram >> (10 + 10);
+        systemInformation->ram.total_ = systemInfo.totalram >> (10 + 10);
 
-        systemInformation->ram.free = systemInfo.freeram >> (10 + 10);
+        systemInformation->ram.free_ = systemInfo.freeram >> (10 + 10);
 
-        systemInformation->ram.inUse = (uint32_t)(100 * (1.0f- (systemInformation->ram.free / float(systemInformation->ram.total))));
+        systemInformation->ram.inUse_ = (uint32_t)(100 * (1.0f- (systemInformation->ram.free_ / float(systemInformation->ram.total_))));
 
         return true;
     }
@@ -126,11 +126,11 @@ void call_cpuid(unsigned int value, int* registers);
             return false;
         }
 
-        systemInformation->hdd.total = (hddInfo.f_frsize * hddInfo.f_blocks) >> (10 + 10);
+        systemInformation->hdd.total_ = (hddInfo.f_frsize * hddInfo.f_blocks) >> (10 + 10);
 
-        systemInformation->hdd.free = (hddInfo.f_frsize * hddInfo.f_bfree) >> (10 + 10);
+        systemInformation->hdd.free_ = (hddInfo.f_frsize * hddInfo.f_bfree) >> (10 + 10);
 
-        systemInformation->hdd.inUse = (uint32_t)(100 * (1.0f - (systemInformation->hdd.free / float(systemInformation->hdd.total))));
+        systemInformation->hdd.inUse_ = (uint32_t)(100 * (1.0f - (systemInformation->hdd.free_ / float(systemInformation->hdd.total_))));
 
         return true;
     }
@@ -208,10 +208,11 @@ void call_cpuid(unsigned int value, int* registers);
 		mem.dwLength = sizeof(MEMORYSTATUSEX);
 		GlobalMemoryStatusEx(&mem);
 
-		systemInformation->ram.total = mem.ullTotalPhys >> (10 + 10);
-		systemInformation->ram.free = mem.ullAvailPhys >> (10 + 10);
+		systemInformation->ram.total_ = mem.ullTotalPhys >> (10 + 10);
 
-        systemInformation->ram.inUse = (uint32_t)(100 * (1.0f- (systemInformation->ram.free / float(systemInformation->ram.total))));
+		systemInformation->ram.free_ = mem.ullAvailPhys >> (10 + 10);
+
+        systemInformation->ram.inUse_ = (uint32_t)(100 * (1.0f- (systemInformation->ram.free_ / float(systemInformation->ram.total_))));
 
 		return true;
 	}
@@ -228,10 +229,10 @@ void call_cpuid(unsigned int value, int* registers);
 			return false;
 		}
 
-		systemInformation->hdd.total = total_bytes.QuadPart >> (10 + 10);
-		systemInformation->hdd.free = free_bytes_avail.QuadPart >> (10 + 10);
+		systemInformation->hdd.total_ = total_bytes.QuadPart >> (10 + 10);
+		systemInformation->hdd.free_ = free_bytes_avail.QuadPart >> (10 + 10);
 
-        systemInformation->hdd.inUse = (uint32_t)(100 * (1.0f - (systemInformation->hdd.free / float(systemInformation->hdd.total))));
+        systemInformation->hdd.inUse_ = (uint32_t)(100 * (1.0f - (systemInformation->hdd.free_ / float(systemInformation->hdd.total_))));
 
 		return true;
 	}
