@@ -76,7 +76,7 @@ bool getHDDInformation(SystemInformation* systemInformation);
 bool getProcInformation(SystemInformation* systemInformation);
 
 
-bool getSystemInformation(SystemInformation& systemInformation);
+bool getSystemInformation(SystemInformation* systemInformation);
 
 //  Each cpuid call return values from the registers.
 //
