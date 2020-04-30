@@ -71,12 +71,12 @@ struct SystemInformation
 
 };
 
-bool getRamInfo(SystemInformation* systemInformation);
-bool getHDDInformation(SystemInformation* systemInformation);
-bool getProcInformation(SystemInformation* systemInformation);
+bool getRamInfo(struct SystemInformation* systemInformation);
+bool getHDDInformation(struct SystemInformation* systemInformation);
+bool getProcInformation(struct SystemInformation* systemInformation);
 
 
-bool getSystemInformation(SystemInformation* systemInformation);
+bool getSystemInformation(struct SystemInformation* systemInformation);
 
 //  Each cpuid call return values from the registers.
 //
@@ -86,7 +86,7 @@ void call_cpuid(unsigned int value, int* registers);
 #ifdef __linux__
 
 
-    bool getRamInfo(SystemInformation* systemInformation)
+    bool getRamInfo(struct SystemInformation* systemInformation)
     {
         struct sysinfo systemInfo;
 
@@ -105,7 +105,7 @@ void call_cpuid(unsigned int value, int* registers);
     }
 
 
-    bool getHDDInformation(SystemInformation* systemInformation)
+    bool getHDDInformation(struct SystemInformation* systemInformation)
     {
         struct statvfs hddInfo;
 
@@ -124,7 +124,7 @@ void call_cpuid(unsigned int value, int* registers);
     }
 
 
-    bool getProcInformation(SystemInformation* systemInformation)
+    bool getProcInformation(struct SystemInformation* systemInformation)
     {
         systemInformation->cpu.coresNumber = sysconf(_SC_NPROCESSORS_ONLN);
 
@@ -193,7 +193,7 @@ void call_cpuid(unsigned int value, int* registers);
 
 //  false - during execution something went wrong and information may be incomplete(or absent at all)
 //  true - information is stored in systemInformation
-bool getSystemInformation(SystemInformation* systemInformation)
+bool getSystemInformation(struct SystemInformation* systemInformation)
 {
     if (!systemInformation)
     {
