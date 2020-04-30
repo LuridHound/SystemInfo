@@ -155,9 +155,10 @@ void call_cpuid(unsigned int value, int* registers);
         while (getline(&line, &lineLength, file) != -1)
         {
             // 7 == length("cpu MHz")
-            if (memcmp(&line, "cpu MHz", 7) == 0)
+            if (memcmp(line, "cpu MHz", 7) == 0)
             {
-                systemInformation->cpu.frequency = atol(strchr(line, ':'));
+                systemInformation->cpu.frequency = atoi(strchr(line, ':') + 1);
+                break;
             }
         }
 
