@@ -8,15 +8,24 @@
 
 #ifdef __linux__
 
-#include <sys/sysinfo.h>
-#include <sys/statvfs.h>
-#include <unistd.h>
-#include <cpuid.h>
+    #include <sys/sysinfo.h>
+    #include <sys/statvfs.h>
+    #include <unistd.h>
+    #include <cpuid.h>
 
 #endif
 
-#ifndef __linux__
-    #error "This platform is not supported"
+
+#ifdef _WIN32
+
+    #include <windows.h>
+    #include <Powrprof.h>
+    #pragma comment(lib, "Powrprof.lib")
+
+#endif
+
+#if !defined __linux__ && !defined _WIN32
+    #error "This platform is not supported."
 #endif
 
 
@@ -71,6 +80,7 @@ struct SystemInformation
 
 };
 
+
 bool getRamInfo(struct SystemInformation* systemInformation);
 bool getHDDInformation(struct SystemInformation* systemInformation);
 bool getProcInformation(struct SystemInformation* systemInformation);
@@ -78,9 +88,11 @@ bool getProcInformation(struct SystemInformation* systemInformation);
 
 bool getSystemInformation(struct SystemInformation* systemInformation);
 
+
 //  Each cpuid call return values from the registers.
 //
 void call_cpuid(unsigned int value, int* registers);
+
 
 #ifdef SYSTEM_INFORMATION_IMPLEMENTATION
 #ifdef __linux__
@@ -182,10 +194,119 @@ void call_cpuid(unsigned int value, int* registers);
     }
 
 
-    void call_cpuid(unsigned int value, int* registers)
-    {
-        __cpuid(value, registers[0], registers[1], registers[2], registers[3]);
-    }
+#endif
+
+
+#ifdef _WIN32
+
+
+	bool getRamInfo(struct SystemInformation* systemInformation)
+	{
+		MEMORYSTATUSEX mem;
+		//  https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/ns-sysinfoapi-memorystatusex
+		//  You must set it before calling "GlobalMemoryStatusEx".
+		mem.dwLength = sizeof(MEMORYSTATUSEX);
+		GlobalMemoryStatusEx(&mem);
+
+		systemInformation->ram.total = mem.ullTotalPhys >> (10 + 10);
+		systemInformation->ram.free = mem.ullAvailPhys >> (10 + 10);
+
+        systemInformation->ram.inUse = (uint32_t)(100 * (1.0f- (systemInformation->ram.free / float(systemInformation->ram.total))));
+
+		return true;
+	}
+
+
+	bool getHDDInformation(struct SystemInformation* systemInformation)
+	{
+		ULARGE_INTEGER free_bytes_avail;
+		ULARGE_INTEGER total_bytes;
+		ULARGE_INTEGER total_free_bytes;
+
+		if (!GetDiskFreeSpaceEx(NULL, &free_bytes_avail, &total_bytes, &total_free_bytes))
+		{
+			return false;
+		}
+
+		systemInformation->hdd.total = total_bytes.QuadPart >> (10 + 10);
+		systemInformation->hdd.free = free_bytes_avail.QuadPart >> (10 + 10);
+
+        systemInformation->hdd.inUse = (uint32_t)(100 * (1.0f - (systemInformation->hdd.free / float(systemInformation->hdd.total))));
+
+		return true;
+	}
+
+
+	bool getProcInformation(struct SystemInformation* systemInformation)
+	{
+		SYSTEM_INFO sys;
+		GetSystemInfo(&sys);
+
+		systemInformation->cpu.count = sys.dwNumberOfProcessors;
+
+		int cpu[4];
+
+		call_cpuid(0x00000000, cpu);
+
+		for (int i = 0; i < 4; i++)
+		{
+			systemInformation->cpu.vendor[0 + i] = (cpu[1] >> (i * 8)) & 0xFF;
+			systemInformation->cpu.vendor[4 + i] = (cpu[3] >> (i * 8)) & 0xFF;
+			systemInformation->cpu.vendor[8 + i] = (cpu[2] >> (i * 8)) & 0xFF;
+		}
+
+		call_cpuid(0x80000002, cpu);
+		memcpy(systemInformation->cpu.name +  0, cpu, 16);
+
+		call_cpuid(0x80000003, cpu);
+		memcpy(systemInformation->cpu.name + 16, cpu, 16);
+
+		call_cpuid(0x80000003, cpu);
+		memcpy(systemInformation->cpu.name + 32, cpu, 16);
+
+		call_cpuid(0x00000001, cpu);
+
+		systemInformation->cpu.family = ((cpu[0] >>  8) & 0xF) +  ((cpu[0] >> 20) & 0xF);
+		systemInformation->cpu.model  = ((cpu[0] >>  4) & 0xF) + (((cpu[0] >> 16) & 0xF) << 4);
+		systemInformation->cpu.MMX    =  (cpu[3] >> 23) & 0x1;
+		systemInformation->cpu.SSE    =  (cpu[3] >> 25) & 0x1;
+		systemInformation->cpu.SSE2   =  (cpu[3] >> 26) & 0x1;
+		systemInformation->cpu.SSE3   =  (cpu[2] >>  0) & 0x1;
+		systemInformation->cpu.SSE41  =  (cpu[2] >> 19) & 0x1;
+		systemInformation->cpu.SSE42  =  (cpu[2] >> 20) & 0x1;
+		systemInformation->cpu.AVX    =  (cpu[2] >> 28) & 0x1;
+
+		struct PPIStruct
+		{
+			ULONG  number;
+			ULONG  maxMhz;
+			ULONG  currentMhz;
+			ULONG  MhzLimit;
+			ULONG  maxIdleState;
+			ULONG  currentIdleState;
+		} PROCESSOR_POWER_INFORMATION, *PPI;
+
+		BYTE* buf = (BYTE*)malloc(sizeof(PROCESSOR_POWER_INFORMATION) * sys.dwNumberOfProcessors);
+		if (buf == NULL)
+		{
+		    return false;
+		}
+
+		CallNtPowerInformation(ProcessorInformation, NULL, 0, buf, sizeof(PROCESSOR_POWER_INFORMATION) * sys.dwNumberOfProcessors);
+		PPI = (PPIStruct*)buf;
+
+		if (PPI != NULL)
+		{
+		    info->cpu.frequency = PPI->maxMhz;
+		}
+
+		if (buf != NULL)
+		{
+		    free(buf);
+		}
+
+		return true;
+	}
 
 
 #endif
@@ -209,6 +330,18 @@ bool getSystemInformation(struct SystemInformation* systemInformation)
         getProcInformation(systemInformation);
 }
 
+void call_cpuid(unsigned int value, int* registers)
+{
+
+#ifdef __linux__
+    __cpuid(value, registers[0], registers[1], registers[2], registers[3]);
+#endif
+
+#ifdef _WIN32
+    __cpuid(registers, value);
+#endif
+
+}
 
 #endif  // SYSTEM_INFORMATION_IMPLEMENTATION
 
