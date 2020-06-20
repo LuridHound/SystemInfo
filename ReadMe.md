@@ -1,4 +1,4 @@
-## SystemInformation
+## System Information
 
 C-library, that provide CPU, RAM and HDD information.
 
@@ -18,5 +18,3 @@ if (!getSystemInformation(&information))
     //  something went wrong.
 }
 ```
-
-
